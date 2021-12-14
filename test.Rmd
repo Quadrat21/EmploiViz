@@ -1,0 +1,147 @@
+---
+title: "EmploiViz test"
+author: ""
+output: 
+  flexdashboard::flex_dashboard:
+    #highlight: kate
+    #orientation: columns
+    menu: social
+    #vertical_layout: scroll #Défilement par scrolling
+---
+
+<style type="text/css">
+
+.navbar-inverse .navbar-nav>.active>a, .navbar-inverse .navbar-nav>.active>a:hover, .navbar-inverse .navbar-nav>.active>a:focus {
+color: #ffffff;
+background-color: #00467f;
+border-color: #002a4c;
+font-weight: 900;
+font-size: 20px;
+}
+
+.navbar {
+color: #ffffff;
+border-color: #002a4c;
+font-weight: 500;
+font-size: 20px;
+}
+
+.navbar-brand {
+color: #ffffff;
+border-color: #048b9a;
+font-weight: 800;
+font-size: 20px;
+}
+
+.chart-title {
+    border-bottom: 1px solid #d7d7d7;
+    color: #333333;
+    font-size: 20px;
+    font-weight: 700;
+    padding: 7px 10px 4px;
+}
+
+.heading-level1 {  /* chart_title  */
+   color: #00467f;
+    font-size: 35px;
+    font-weight: 500;
+}
+
+.nav-tabs-custom .nav-tabs li.active a {
+  color: #333333;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.nav-tabs-custom .nav-tabs li:not(.active) a {
+  font-size: 20px;
+  font-weight: 500;
+}
+
+
+h3, .h3 {
+   color: #000000;
+   font-size: 25px;
+}
+
+
+h4, .h4 {
+   color: #002a4c;
+    font-size: 20px;
+    font-weight: 550;
+}
+
+a:visited {
+   color: rgb(50%, 0%, 50%);
+}
+
+</style>
+
+
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(plyr)
+library(dplyr)
+library(shiny)
+library(plotly) # Graphiques interractifs
+library(knitr)
+library(readxl)
+library(waffle)
+library("RColorBrewer")
+library(sf)
+library(leaflet)
+library(ggplot2)
+library(htmltools)
+
+# Choix des couleurs
+## Hommes femmes
+col2 <- c("#A6CEE3","#B2DF8A")
+
+cat3 <- brewer.pal(n = 3, name = 'Paired')
+cat4 <- brewer.pal(n = 4, name = 'Paired')
+cat5 <- brewer.pal(n = 5, name = 'Paired')
+cat6 <- brewer.pal(n = 6, name= 'Paired')
+cat7 <- brewer.pal(n = 7, name = 'Paired')
+
+## Familles
+col_com <- "#1985D2"
+col_adm <- "#B8D8D8"
+col_sup <- "#B8B8B8"
+```
+
+Présentation de l'outil {data-orientation=columns}
+=======================================================================
+
+Column {data-width=200}
+-----------------------------------------------------------------------
+ 
+
+Column {data-width=700}
+-----------------------------------------------------------------------
+### 
+<h3> Outil de visualisation des données de la branche Prestataire de Services Secteur Tertiaire <img src="QLogo149.png" width=43 height=43 /></h3>
+***
+
+
+<h4> Présentation </h4>
+Cet outil de visualisation interactif présente les principaux indicateurs liés à l'activité ainsi qu'aux enjeux d'emploi et de gestion des ressources humaines de la branche des prestataires de services du secteur tertiaire. Les statistiques s'appuient sur une enquête menée auprès des structures de la branche en 2020, sur des sources publiques (DARES, INSEE, DADS) et, pour les données relatives à la formation, sur les données de l'OPCO EP.
+
+Le premier onglet propose un aperçu général de la branche : nombre d'entreprises, évolution des effectifs, implantation géographique, <i>etc.</i> Le deuxième onglet dresse le portrait social des salariés de la branche : âge, métiers occupés, féminisation, <i>etc.</i> Enfin, le dernier volet de l'outil se concentre sur la formation professionnelle et l'alternance. 
+
+Cet outil a été développé par le cabinet Quadrat-Études en décembre 2021.
+<br><br>
+
+
+<h4> Utilisation </h4>
+Il est tout d'abord conseillé d'adapter le niveau de zoom du navigateur, notamment dézoomer sur petit écran (sur ordinateur portable un niveau de zoom à 67% est généralement adapté). Il suffit ensuite d'explorer les différents volets en cliquant sur les onglets de la barre de navigation supérieure, un passage de la souris sur les différents éléments des graphiques permet d'obtenir plus de détails, un clic sur les boutons de lancement d'animation permet de visualiser les évolutions d'indicateurs au cours du temps. 
+
+###
+```{r picture, out.height= '50%'}
+knitr::include_graphics("GIF_P2ST.gif")
+```
+
+
+Column {data-width=200}
+-----------------------------------------------------------------------
+

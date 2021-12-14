@@ -1,0 +1,699 @@
+---
+title: "EmploiViz P2ST"
+author: ""
+output: 
+  flexdashboard::flex_dashboard:
+    #highlight: kate
+    #orientation: columns
+    menu: social
+    #vertical_layout: scroll #Défilement par scrolling
+---
+
+<style type="text/css">
+
+.navbar-inverse .navbar-nav>.active>a, .navbar-inverse .navbar-nav>.active>a:hover, .navbar-inverse .navbar-nav>.active>a:focus {
+color: #ffffff;
+background-color: #00467f;
+border-color: #002a4c;
+font-weight: 900;
+font-size: 20px;
+}
+
+.navbar {
+color: #ffffff;
+border-color: #002a4c;
+font-weight: 500;
+font-size: 20px;
+}
+
+.navbar-brand {
+color: #ffffff;
+border-color: #048b9a;
+font-weight: 800;
+font-size: 20px;
+}
+
+.chart-title {
+    border-bottom: 1px solid #d7d7d7;
+    color: #333333;
+    font-size: 20px;
+    font-weight: 700;
+    padding: 7px 10px 4px;
+}
+
+.heading-level1 {  /* chart_title  */
+   color: #00467f;
+    font-size: 35px;
+    font-weight: 500;
+}
+
+.nav-tabs-custom .nav-tabs li.active a {
+  color: #333333;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.nav-tabs-custom .nav-tabs li:not(.active) a {
+  font-size: 20px;
+  font-weight: 500;
+}
+
+
+h3, .h3 {
+   color: #000000;
+   font-size: 25px;
+}
+
+
+h4, .h4 {
+   color: #002a4c;
+    font-size: 20px;
+    font-weight: 550;
+}
+
+a:visited {
+   color: rgb(50%, 0%, 50%);
+}
+
+</style>
+
+
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(plyr)
+library(dplyr)
+library(shiny)
+library(plotly) # Graphiques interractifs
+library(knitr)
+library(readxl)
+library(waffle)
+library("RColorBrewer")
+library(sf)
+library(leaflet)
+library(ggplot2)
+library(htmltools)
+
+# Choix des couleurs
+## Hommes femmes
+col2 <- c("#A6CEE3","#B2DF8A")
+
+cat3 <- brewer.pal(n = 3, name = 'Paired')
+cat4 <- brewer.pal(n = 4, name = 'Paired')
+cat5 <- brewer.pal(n = 5, name = 'Paired')
+cat6 <- brewer.pal(n = 6, name= 'Paired')
+cat7 <- brewer.pal(n = 7, name = 'Paired')
+
+## Familles
+col_com <- "#1985D2"
+col_adm <- "#B8D8D8"
+col_sup <- "#B8B8B8"
+```
+
+Présentation de l'outil {data-orientation=columns}
+=======================================================================
+
+Column {data-width=200}
+-----------------------------------------------------------------------
+ 
+
+Column {data-width=700}
+-----------------------------------------------------------------------
+### 
+<h3> Outil de visualisation des données de la branche Prestataire de Services Secteur Tertiaire <img src="QLogo149.png" width=50 height=50 /></h3>
+***
+
+
+<h4> Présentation </h4>
+Cet outil de visualisation interactif présente les principaux indicateurs liés à l'activité ainsi qu'aux enjeux d'emploi et de gestion des ressources humaines de la branche des prestataires de services du secteur tertiaire. Les statistiques s'appuient sur une enquête menée auprès des structures de la branche en 2020, sur des sources publiques (DARES, INSEE, DADS) et, pour les données relatives à la formation, sur les données de l'OPCO EP.
+
+Le premier onglet propose un aperçu général de la branche : nombre d'entreprises, évolution des effectifs, implantation géographique, <i>etc.</i> Le deuxième onglet dresse le portrait social des salariés de la branche : âge, métiers occupés, féminisation, <i>etc.</i> Enfin, le dernier volet de l'outil se concentre sur la formation professionnelle et l'alternance. 
+
+Cet outil a été développé par le cabinet Quadrat-Études en décembre 2021.
+<br><br>
+
+
+<h4> Utilisation </h4>
+Il est tout d'abord conseillé d'adapter le niveau de zoom du navigateur, notamment dézoomer sur petit écran (sur ordinateur portable un niveau de zoom à 67% est généralement adapté). Il suffit ensuite d'explorer les différents volets en cliquant sur les onglets de la barre de navigation supérieure, un passage de la souris sur les différents éléments des graphiques permet d'obtenir plus de détails, un clic sur les boutons de lancement d'animation permet de visualiser les évolutions d'indicateurs au cours du temps. 
+
+###
+```{r picture, out.width = '100%'}
+knitr::include_graphics("GIF_P2ST.gif")
+```
+
+Column {data-width=200}
+-----------------------------------------------------------------------
+
+
+Aperçu de la branche {data-orientation=columns}
+=======================================================================
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### Chiffres clé 
+```{r}
+valueBox("14 720","Entreprises dans la branche au 31/12/2020 regroupant près de 17 000 établissements." , icon="fa-building")
+```
+
+### 
+```{r}
+valueBox("134 900","Salariés présents au 31/12/2020, correspondant à 100 100 équivalents temps plein (ETP).", icon="fa-users")
+```
+
+### 
+```{r}
+valueBox("+ 6,8%","Croissance annuelle moyenne du volume d'emploi depuis 2010.", icon="fa-chart-line")
+```
+
+###
+```{r}
+regions_wgs84 <- read_sf(dsn = "regions-20190101-shp", layer="regions-20190101")
+P2ST_EffReg <- read_excel("P2ST_EffReg2020.xlsx",range = "A1:D18")
+P2ST_geoloc <- read_excel("P2ST_geoloc.xlsx")
+
+names(P2ST_EffReg)=c("code_insee","effreg","spe","nbent")
+regions_pop_wgs84 <- regions_wgs84 %>% 
+  left_join(P2ST_EffReg, by = "code_insee")
+
+regions_pop_wgs84=regions_pop_wgs84[,c("code_insee","nom","geometry","effreg","spe","nbent")]
+regions_pop_wgs84[regions_pop_wgs84$nom=="Mayotte","effreg"]=0
+regions_pop_wgs84[regions_pop_wgs84$nom=="Mayotte","spe"]=0
+regions_pop_wgs84[regions_pop_wgs84$nom=="Mayotte","nbent"]=0
+
+pal <- colorBin(
+  palette = c("#f1eef6","#d4b9da","#c994c7","#df65b0","#dd1c77","#980043"),
+  domain = regions_pop_wgs84$effreg,
+  reverse = FALSE,
+  bins = c(0,2500,5000,7500,15000,30000,65100)
+)
+
+noms_legende=c("Moins de 2 500 salariés","de 2 500 à 5 000 salariés", "de 5 000 à 7 500 salariés","de 7 500 à 15 000 salariés","de 15 000 à 30 000 salariés","Plus de 30 000 salariés")
+
+regions_pop_wgs84 = regions_pop_wgs84 %>% mutate(texte=paste0("<b>",nom,"</b>",
+                    "<br/>Entreprises : ",format(nbent, big.mark = " "),
+                    "<br/>Effectifs : ",format(effreg, big.mark = " "),
+                    "<br/>Spécialisation : ",format(spe, big.mark = " ",digits=1)))
+
+leaflet() %>% setView(lng = 1.87528, lat = 46.60611, zoom = 5.3) %>%
+  addTiles(urlTemplate="https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png") %>%
+  # polygones des regions
+  addPolygons(
+    data = regions_pop_wgs84, 
+    label = ~lapply(texte,HTML),
+    fill = TRUE, 
+    # Application de la fonction palette
+    fillColor = ~pal(effreg),
+    fillOpacity = 0.8,
+    color="#5c5e5e",
+    highlightOptions = highlightOptions(color = "white", weight = 2)) %>%
+  addLegend(
+        pal = pal, 
+        position = "bottomright",
+        values = regions_pop_wgs84$effreg,
+        labFormat = function(type, cuts, p) {paste0(noms_legende)}
+  ) %>%
+  addCircleMarkers(
+  data = filter(P2ST_geoloc,!is.na(LATITUDE)),
+  group="Afficher les établissements",
+  lng = ~LONGITUDE, 
+  lat = ~LATITUDE, 
+  radius = ~scales::rescale(EFF, to = c(1, 10)),
+  color = "#629694",
+  weight = 1,
+  fillOpacity = 0.5,
+  opacity = 0.5,
+  stroke = TRUE,
+  popup = ~paste0("<b>",RAISOC,"</b>")
+      ) %>%
+  addLayersControl(position = "topright", overlayGroups = c("Afficher les établissements"),options = layersControlOptions(collapsed = FALSE)) %>%
+  hideGroup("Afficher les établissements")
+
+```
+
+
+Column {data-width=475}
+-----------------------------------------------------------------------
+### Évolution de l'emploi dans la branche P2ST
+```{r}
+emploi <- read_excel("Emploi.xlsx")
+
+accumulate_by <- function(dat, var) {
+  var <- lazyeval::f_eval(var, dat)
+  lvls <- plotly:::getLevels(var)
+  dats <- lapply(seq_along(lvls), function(x) {
+    cbind(dat[var %in% lvls[seq(1, x)], ], frame = lvls[[x]])
+  })
+  dplyr::bind_rows(dats)
+}
+
+Evo_emploi <- emploi %>% accumulate_by(~Année)
+
+text=Evo_emploi[,"Emploi salarié au 31/12 lissé"]
+`%nin%` = Negate(`%in%`)
+text[text %nin% c(as.numeric(min(text)),as.numeric(max(text)))]=NA
+text=format(text, big.mark = " ", small.mark = " ", digits = 0, scientific = FALSE)
+text[text=="     NA"]=""
+text[text==" 58 748"]="<b>58 748</b>"
+text[text=="134 867"]="<b>134 867</b>"
+
+Evo_emploi <- Evo_emploi %>%
+  plot_ly(
+    x = ~Année, 
+    y = ~`Emploi salarié au 31/12 lissé`,
+    text=text,
+    frame = ~frame, 
+    type = 'scatter',
+    mode = 'lines+markers+text',
+    line = list(simplyfy = F),
+    #texttemplate = '<b>%{text}<b>',
+    textposition = 'top center',
+    hovertemplate = paste(" ","%{x} \n", "%{y}<extra></extra>"," salariés"))%>%
+  layout(yaxis = list(range = list(0,150000),title=list(""), tickformat=",",zeroline=FALSE),xaxis=list(title=list("")), 
+         margin= list(pad=10)) %>%
+  config(locale = 'fr')
+
+Evo_emploi <- Evo_emploi %>% animation_opts(
+  frame = 250, 
+  transition = 0, 
+  redraw = FALSE)%>%
+  animation_slider(hide = T) %>%
+  animation_button(x = 1, xanchor = "right", y = 0.01, yanchor = "bottom", label="<b>Afficher l'évolution<b>") %>%
+  hide_legend()
+
+config(Evo_emploi, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'pan', 'select', 'zoomIn', 'zoomOut', 'autoScale', 'lasso', 'hoverClosestCartesian', 'hoverCompareCartesian'))
+```
+
+Column {data-width=325}
+-----------------------------------------------------------------------
+### Répartition des entreprises selon leur taille
+```{r}
+taille <- read_excel("Taille entreprise.xlsx")
+
+#Mise en forme des étiquettes
+taille$Taille <- c("1 à 10\nsalariés","11 à 49\nsalariés","50 à 299\nsalariés","300 salariés\net plus")
+taille$Taille <- factor(taille$Taille, levels = c("1 à 10\nsalariés","11 à 49\nsalariés","50 à 299\nsalariés","300 salariés\net plus"))
+
+#Graphique
+hist_taille_ent <- plot_ly(taille, x=~Taille, y=~Entreprises, type='bar', texttemplate='<b>%{y}<b>', textposition='outside', marker=list(color=col2[1]),
+  hovertemplate = paste("La branche compte","%{y}<extra></extra>","entreprises de"  ,"%{x} \n")) %>%
+  layout(xaxis=list(title=""), yaxis=list(tickformat=',',title="", range=c(0,14500),zeroline=FALSE),margin=list(pad=10)) %>%
+  config(locale = 'fr')
+
+config(hist_taille_ent, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'pan', 'select', 'zoomIn', 'zoomOut', 'autoScale', 'lasso', 'hoverClosestCartesian', 'hoverCompareCartesian'))
+```
+
+### Répartition des effectifs salariés au 31/12 selon la taille de l'entreprise 
+```{r}
+hist_taille_sal <- plot_ly(taille, x=~Taille, y=~Salariés, type='bar', texttemplate='<b>%{y}<b>', textposition='outside', marker=list(color=col2[2]),
+                           hovertemplate = paste("Les entreprises de","%{x} \n","rassemblent","%{y}<extra></extra>","salariés")) %>%
+  layout(xaxis=list(title=""), yaxis=list(tickformat=',', title="", range=c(0,55000), zeroline=FALSE),margin=list(pad=10)) %>%
+  config(locale = 'fr')
+
+config(hist_taille_sal, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'pan', 'select', 'zoomIn', 'zoomOut', 'autoScale', 'lasso', 'hoverClosestCartesian', 'hoverCompareCartesian'))
+```
+
+
+Portrait social 
+=======================================================================
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### Pyramide des âges des salariés de la branche
+```{r}
+pyr_age <- read_excel("Pyramide age.xlsx")
+
+#Fixe l'ordre d'affichage des catégories d'age sur le graph
+pyr_age$Age <- factor(pyr_age$Age,levels = c("15","16","17","18","19","20","21", "22","23","24","25","26", "27", "28","29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40","41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59", "60", "61", "62", "63", "64", "65", "66", "67", "68", "69", "70", "71", "72", "73", "74", "75", "76", "77", "78", "79", "80", "81", "82", "83", "84", "85", "86"))
+
+#Graphique
+pyr_ageho <- plot_ly(pyr_age[1:65,], y = ~Age, x = ~Ens_hommes, name="Hommes tous secteurs confondus", 
+                     text= ~ format(round(Ens_hommes,0), big.mark=" "), 
+                     textposition='none', type='bar', 
+                     marker= list(color=cat7[1]), opacity=0.9, 
+                     hovertemplate=paste("%{y} ans \n %{text} salariés<extra></extra>")) #%>% 
+
+pyr_ageho2 <- pyr_ageho %>% 
+  add_trace(x=~Hommes, xaxis=list(xaxis="x2"), text= ~format(round(Hommes,0), big.mark=" "), name="Hommes de la branche au 31/12", textposition='none',
+            marker= list(color=cat7[2]), opacity=0.5, hovertemplate=paste("%{y} ans \n %{text} salariés<extra></extra>"))
+
+pyr_ageho3 <- pyr_ageho2 %>% 
+  layout(barmode="overlay", margin= list(autoexpand=FALSE), 
+         xaxis= list(range=c(-410000,410000), showgrid=T, title="",
+                     ticktext = list("400 000", "300 000", "200 000", "100 000", "0",
+                                     "100 000", "200 000", "300 000", "400 000"),
+                     tickvals = list(-400000,-300000,-200000,-100000,0,
+                                     100000,200000, 300000, 400000)),
+         xaxis2=list(range=c(-3500,3500), overlaying="x", side="top", showgrid=F, title="",
+                     tickvals = list(-3000, -2000, -1000, 0,
+                                     1000, 2000, 3000),
+                     ticktext = list("3 000", "2 000", "1 000", "0",
+                                     "1 000", "2 000", "3 000")
+                    ),
+         yaxis=list(tickvals=list(15,20,25,30,35,40,45,50,55,60,65,70,75))
+         )%>%
+  add_trace(x=~ -Ens_femmes, text= ~ format(round(Ens_femmes,0), big.mark=" "), textposition='none', type='bar',
+            name="Femmes tous secteurs confondus",
+            marker= list(color="#B2DF8A"), opacity=0.9,
+            hovertemplate=paste("%{y} ans \n %{text} salariées<extra></extra>"))%>% 
+  add_trace(x=~-Femmes, xaxis=list(xaxis="x2"), text=~format(round(Femmes,0), big.mark=" "), textposition='none',
+            name="Femmes de la branche au 31/12",
+            marker= list(color="#33A02C"), opacity=0.5,
+            hovertemplate=paste("%{y} ans \n %{text} salariées<extra></extra>"))%>% 
+  layout(legend = list(x = 0, y = 1), xaxis = list(title="Femmes                                                Hommes", tickformat=",")) %>%
+  config(locale = 'fr')
+
+
+config(pyr_ageho3, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'pan', 'select', 'zoomIn', 'zoomOut', 'autoScale', 'lasso', 'hoverClosestCartesian', 'hoverCompareCartesian'))
+```
+
+### Pyramide des anciennetés des salariés de la branche
+```{r}
+Pyramide_anc <- read_excel("Pyramide_ancienneté.xlsx")
+
+#Fixe l'ordre d'affichage des catégories d'ancienneté sur le graph
+Pyramide_anc$Ancienneté <- factor(Pyramide_anc$Ancienneté,levels = c("Moins d'un an","2 à 5 ans","6 à 10 ans","11 à 15 ans","16 à 20 ans","Plus de 20 ans")) 
+
+#Création des étiquettes
+Pyramide_anc$pct_femmes <- paste(round(Pyramide_anc$`Femmes CDI`/sum(Pyramide_anc$`Femmes CDI`)*100,0),"%", sep="")
+Pyramide_anc$pct_hommes <- paste(round(Pyramide_anc$`Hommes CDI`/sum(Pyramide_anc$`Hommes CDI`)*100,0),"%", sep="")
+
+#Graphique
+Pyr_femmes <- Pyramide_anc %>%
+  plot_ly(y = ~Ancienneté, x = ~ - `Femmes CDI`, text= ~pct_femmes, texttemplate='<b>%{text}<b>', textposition='outside', type='bar',
+          marker = list(color =col2[2])
+          ,hovertemplate=paste("%{y} \n%{text} des femmes<extra></extra>")
+          ) %>%
+  layout(yaxis = list(side="left", title=""),
+         xaxis = list(range = list(-27000,27000), 
+                      ticktext = list("20 000", "15 000", "10 000","5 000","0","5 000","10 000","15 000","20 000"), 
+                      tickvals = list(-20000,-15000,-10000,-5000,0,5000,10000,15000,20000),
+                      tickformat=",")) %>%
+  add_trace(x = ~`Hommes CDI`, text= ~pct_hommes, textposition='outside', type='bar',
+          marker = list(color =col2[1])
+          ,hovertemplate=paste("%{y} \n%{text} des hommes<extra></extra>")
+          ) %>% 
+  layout(barmode="overlay", bargap=0.1, 
+         xaxis = list(title="Femmes                                                  Hommes"))%>%
+  hide_legend %>%
+  config(locale = 'fr')
+
+
+config(Pyr_femmes, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'pan', 'select', 'zoomIn', 'zoomOut', 'autoScale', 'lasso', 'hoverClosestCartesian', 'hoverCompareCartesian'))
+```
+
+
+Column {data-width=500 .tabset}
+-----------------------------------------------------------------------
+### Les métiers de la branche
+```{r}
+#Création de la base
+fam_met <- as.data.frame(matrix(c(rep("Technique et logistique",3),rep("Administratif et direction",5),rep("Commercial et accueil",11),"Informaticien", "Logisticien, manutentionnaire,\n magasinier, transporteur", "Ouvrier et technicien de\n l'entretien du bâtiment", "Directeur de structure", "Cadre administratif\n et financier", "Employé administratif\n d'entreprise", "Secrétaire", "Traducteur", "Optimisateur de linéaire", "Promoteur des ventes", "Vendeur, employé\n commercial", "Responsable commercial/d'équipe,\n responsable des ventes", "Chargé de développement\n commercial", "Animateur commercial", "Chargé de recouvrement", "Télévendeur, téléconseiller,\n télésecrétaire", "Enquêteur", "Directeur commercial,\n directeur des ventes", "Hôte d'accueil,\n chargé d'accueil, standardiste"), ncol=2))
+fam_met <- rename(fam_met, famille=V1)
+fam_met <- rename(fam_met, metier=V2)
+
+
+# Création du faux proportionnel pour faire apparaitre un métier à petit effectif
+fam_met$eff_met1 <- c(2586, 1360, 1419, 1106, 11654, 8451,1340, 79, 9412, 4897, 14836, 7750, 1824, 2598, 3592, 53634, 1000, 3246, 4083) 
+fam_met$eff_met2 <- fam_met$eff_met1 + c(rep(0,7), 200, rep(0,11)) ## 279 à la place de 79 pour faire apparaitre le métier de manière plus lisible sur le graphique
+fam_met$eff_fam1 <- c(rep(5365,3),rep(22630,5),rep(106872,11))
+fam_met$eff_fam2 <- fam_met$eff_fam1 + c(rep(0,3),rep(200,5),rep(0,11)) ## 22830 au lieu de 22630 pour faux proprotionnel
+
+# Création des pourcentages
+fam_met$pct_eff_met <- round(fam_met$eff_met1/(sum(fam_met$eff_met1))*100, digits=0)
+fam_met$pct_fam_met <- round(fam_met$eff_fam1/(sum(fam_met$eff_met1))*100, digits=0)
+
+# Création de libemploi plus court pour améliorer la visibilité du graphique
+fam_met$metierS <- c("<b>Informaticien</b>", "Logisticien", "Ouvrier d'entretien", "Directeur de structure", "Cadre admin. et financier", "Employé administratif", "Secrétaire", "Traducteur", "Optimisateur de linéaire", "Promoteur des ventes", "Employé commercial", "Responsable commercial", "Chargé de dév. commercial", "Animateur commercial", "Chargé de recouvrement", "Télévendeur", "Enquêteur", "Directeur commercial", "Hôte d'accueil")
+
+# Modification format pour séparateur des milliers
+fam_met$eff_fam1 <- format(fam_met$eff_fam1, big.mark = " ")
+fam_met$eff_met1 <- format(fam_met$eff_met1, big.mark = " ")
+
+
+# Text à apparaitre en hovertext
+text <- paste(c(unique((fam_met$famille)), fam_met$metier), "\n" ,c(unique(fam_met$eff_fam1),fam_met$eff_met1), "salariés \n" , c(unique(fam_met$pct_fam_met),fam_met$pct_eff_met), '% des effectifs de la branche') ## enlever les 1
+
+
+# Graphique  
+dia_fam_metier3 <- plot_ly(
+  labels = c(unique((fam_met$famille)), fam_met$metierS),
+  parents = c(rep("",length(unique((fam_met$famille)))),fam_met$famille),
+  values = c(unique(fam_met$eff_fam2),fam_met$eff_met2), ##enlever les 2
+  type = 'sunburst', 
+  insidetextorientation='radial', #orientation des labels : auto radial tangential horizontal,
+  branchvalues = 'total',
+  hoverinfo='text',
+  marker = list(colors=c(col_sup,col_adm,col_com)),
+  hovertext = text,
+  rotation =260
+)
+
+
+config(dia_fam_metier3, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'pan', 'select', 'zoomIn', 'zoomOut', 'autoScale', 'lasso'))
+```
+
+### Les types de contrat de travail
+```{r}
+contrat2 <- read_excel("Contrat.xlsx")
+
+#Ordonne les étiquettes
+contrat2 <- contrat2 %>% arrange(ordre)
+contrat2$contrat <- c("CDI","CDD","CIDD : Contrat d'intervention à durée déterminée", "Contrat en alternance","Autres (stages…)" )
+
+# Création des pourcentages
+contrat2$pct_ens <- round(contrat2$Ensemble/sum(contrat2$Ensemble)*100,2)
+contrat2$pct_com <- round(contrat2$`Commercial et accueil`/sum(contrat2$`Commercial et accueil`)*100,2)
+contrat2$pct_adm <- round(contrat2$`Administratif et direction`/sum(contrat2$`Administratif et direction`)*100,2)
+contrat2$pct_tec <- round(contrat2$`Technique et logistique`/sum(contrat2$`Technique et logistique`)*100,2)
+
+# Création d'un nouvel effectif pour faux proportionnel
+for (i in 1:nrow(contrat2)){contrat2$Ensemble3[i] <- if_else(contrat2$pct_ens[i]<0.25, contrat2$Ensemble[i]*6, contrat2$Ensemble[i])}
+for (i in 1:nrow(contrat2)){contrat2$Com3[i] <- if_else(contrat2$pct_com[i]<0.25, contrat2$`Commercial et accueil`[i]*6, contrat2$`Commercial et accueil`[i])}
+for (i in 1:nrow(contrat2)){contrat2$Adm3[i] <- if_else(contrat2$pct_adm[i]<0.25, contrat2$`Administratif et direction`[i]*6, contrat2$`Administratif et direction`[i])}
+for (i in 1:nrow(contrat2)){contrat2$Tec3[i] <- if_else(contrat2$pct_tec[i]<0.25, contrat2$`Technique et logistique`[i]*6, contrat2$`Technique et logistique`[i])}
+
+# Formattage des nombres sous la forme 9 999
+contrat2$Ens2 <- format(contrat2$Ensemble,big.mark=" ")
+contrat2$Com2 <- format(contrat2$`Commercial et accueil`,big.mark=" ")
+contrat2$Adm2 <- format(contrat2$`Administratif et direction`,big.mark=" ")
+contrat2$Tec2 <- format(contrat2$`Technique et logistique`,big.mark=" ")
+
+#Création des boutons
+total <- list(labels=contrat2$ContratS, values=contrat2$Ensemble3, xref='x', yref='y', ax=0, ay=-40)
+commer <- list( labels=contrat2$ContratS, values=contrat2$Com3, xref='x', yref='y', ax=0, ay=40)
+admin <- list(labels=contrat2$ContratS, values=contrat2$Adm3, xref='x', yref='y', ax=0, ay=-20)
+techn <- list(labels=contrat2$ContratS, values=contrat2$Tec3, xref='x', yref='y', ax=0, ay=-20)
+
+updatemenus <- list(
+  list(
+    type= 'buttons',
+    buttons = list(
+      list(
+        label = "Ensemble de la branche", method = "update",
+        args = list(list(visible = c(TRUE, FALSE, FALSE, FALSE)),
+                    list(title = ""))),
+      list(
+        active = -1, label = "Commercial et accueil", method = "update",
+        args = list(list(visible = c(FALSE, TRUE, FALSE, FALSE)),
+                    list(title = ""))),
+      list(
+        active = -1, label = "Administratif et direction", method = "update",
+        args = list(list(visible = c(FALSE, FALSE, TRUE, FALSE)),
+                    list(title = ""))),
+      list(
+        active = -1, label = "Technique et logistique", method = "update",
+        args = list(list(visible = c(FALSE, FALSE, FALSE, TRUE)),
+                    list(title = ""))))))
+
+
+# Graphique
+fig2 <- plot_ly(contrat2, labels = ~ContratS, values = ~Ensemble3, name="Total", title="",
+                type = 'pie',
+                textinfo = 'label', hoverinfo='text', texttemplate='<b>%{label}<b>', 
+                text= ~paste(contrat, "\n", Ens2, "salariés\n", round(pct_ens,0), "% des effectifs de la branche"), 
+                marker = list(colors=cat5, line = list(color = '#FFFFFF', width = 0.9)), 
+                rotation =-90, sort=FALSE
+                )%>%
+  add_pie(contrat2, labels = ~ContratS, values = ~Com3 , 
+          name="Commercial et accueil", title="", textinfo = 'label', hoverinfo='text', texttemplate='<b>%{label}<b>', 
+          text= ~paste(contrat, "\n", Com2 , "salariés\n", round(pct_com,0), "% des effectifs de la famille commercial et accueil"),
+          marker = list(colors=cat5, line = list(color = '#FFFFFF', width = 0.9)), 
+          rotation =-90, visible=FALSE, sort=FALSE)%>% 
+  add_pie(contrat2[contrat2$Adm3!=0,], labels = ~contrat2[contrat2$Adm3!=0,]$ContratS, values = ~contrat2[contrat2$Adm3!=0,]$Adm3, 
+          name="Administratif et direction", title="", textinfo = 'label', hoverinfo='text', texttemplate='<b>%{label}<b>', 
+          text= ~paste(contrat2[contrat2$Adm3!=0,]$contrat, "\n", contrat2[contrat2$Adm3!=0,]$Adm2, "salariés\n", round(contrat2[contrat2$Adm3!=0,]$pct_adm,0), "% des effectifs de la famille administratif et direction"),
+          marker = list(colors=c(cat5[1:2], cat5[4:5]), line = list(color = '#FFFFFF', width = 0.9)), 
+          rotation =-90, visible=FALSE, sort=FALSE)%>% 
+  add_pie(contrat2[contrat2$Tec3!=0,], labels = ~contrat2[contrat2$Tec3!=0,]$ContratS, values = ~contrat2[contrat2$Tec3!=0,]$Tec3, 
+          name="Technique et logistique", title="", textinfo = 'label', hoverinfo='text', texttemplate='<b>%{label}<b>', 
+          text= ~paste(contrat2[contrat2$Tec3!=0,]$contrat, "\n", contrat2[contrat2$Tec3!=0,]$Tec2, "salariés\n", round(contrat2[contrat2$Tec3!=0,]$pct_tec,0), "% des effectifs de la famille technique et logistique"),
+          marker = list(colors=c(cat5[1:2], cat5[4:5]), line = list(color = '#FFFFFF', width = 0.9)), 
+          rotation =-90, visible=FALSE, sort=FALSE)%>% 
+  layout(legend = list(x = -0.32, y = .6, traceorder='normal'),
+         updatemenus=updatemenus)%>% 
+  config(locale = 'fr')
+
+
+
+config(fig2, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'pan', 'select', 'zoomIn', 'zoomOut', 'autoScale', 'lasso'))
+```
+
+
+### La féminisation par métier
+```{r}
+femi <- read_excel("Féminisation.xlsx", sheet="Métier")
+
+#Création de libellés plus courts pour meilleur affichage
+femi$metierS <- c("Informaticien", "Logisticien", "Ouvrier d'entretien", "Directeur de structure", "Cadre admin. et financier", "Employé administratif", "Secrétaire", "Traducteur", "Optimisateur de linéaire", "Promoteur des ventes", "Employé commercial", "Responsable commercial", "Chargé de dév. commercial", "Animateur commercial", "Chargé de recouvrement", "Télévendeur", "Enquêteur", "Directeur commercial", "Hôte d'accueil","Total")
+
+# Ordonne selon le taux de féminisation
+femi <- femi[order(femi$`Taux de féminisation`),] 
+
+#Graphique
+Hist_femi_tot <- femi[femi$Famille=="Total",] %>%
+  plot_ly(y = ~ metierS, x = ~ `Taux de féminisation`, type='bar',
+          marker = list(color = "black"), hoverinfo="x", xhoverformat = ".0%") %>% 
+  layout(xaxis= list(title="", range = list(0,0.95), zeroline=FALSE),
+         yaxis= list(title=" ", categoryorder="array", categoryarray=~metierS),
+         title="Taux de féminisation", y=0.9, margin=list(pad=10))
+
+Hist_femi_sup <- femi[femi$Famille=="Technique et logistique",] %>%
+  plot_ly(y = ~ metierS, x = ~ `Taux de féminisation`, type='bar', 
+          marker = list(color = col_sup), hoverinfo="x", xhoverformat = ".0%") %>% 
+  layout(xaxis= list(title="", range = list(0,0.95), zeroline=FALSE),
+         yaxis= list(title=" ", categoryorder="array", categoryarray=~metierS)
+         , margin=list(pad=10))
+
+Hist_femi_adm <- femi[femi$Famille=="Administratif et direction",] %>%
+  plot_ly(y = ~ metierS, x = ~ `Taux de féminisation`, type='bar', 
+          marker = list(color = col_adm), hoverinfo="x", xhoverformat = ".0%" ) %>% 
+  layout(xaxis= list(title="", range = list(0,0.95), zeroline=FALSE),
+         yaxis= list(title=" ", categoryorder="array", categoryarray=~metierS)
+         , margin=list(pad=10)) # Ordonne les lignes selon l'odre de la colonne métier
+
+Hist_femi_com <- femi[femi$Famille=="Commercial et accueil",] %>%
+  plot_ly(y = ~ metierS, x = ~ `Taux de féminisation`, type='bar',
+          marker = list(color = col_com), hoverinfo="x", xhoverformat = ".0%" ) %>% 
+  layout(xaxis= list(title="", range = list(0,0.95), tickformat='.0%', zeroline=FALSE),
+         yaxis= list(title=" ", categoryorder="array", categoryarray=~metierS)
+         , margin=list(pad=10))
+
+hist_fem_met <- subplot(Hist_femi_tot, Hist_femi_adm,Hist_femi_com,Hist_femi_sup, shareX=TRUE, nrows=4, heights=c(1.3/20.3,5/20.3,11/20.3,3/20.3)) %>%
+  hide_legend()
+
+config(hist_fem_met, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'pan', 'select', 'zoomIn', 'zoomOut', 'autoScale', 'lasso', 'hoverClosestCartesian', 'hoverCompareCartesian'))
+```
+
+
+
+Alternance et formation professionnelle {data-columns=rows}
+=======================================================================
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+### Évolution du nombre d’alternants dans la branche P2ST
+  
+```{r}
+app <- read_excel("Apprentissage.xlsx")
+
+#Création des étiquettes
+app$z <- c("","","","","","","","","","1 723","1 908","2 598","3 744","2 134")
+app$w <- c("","430","400","600","610","680","610","620","820","950","1 120","1 250","1 400","5 352")
+
+
+accumulate_by <- function(dat, var) {
+  var <- lazyeval::f_eval(var, dat)
+  lvls <- plotly:::getLevels(var)
+  dats <- lapply(seq_along(lvls), function(x) {
+    cbind(dat[var %in% lvls[seq(1, x)], ], frame = lvls[[x]])
+  })
+  dplyr::bind_rows(dats)
+}
+
+Evo_app <- app %>% accumulate_by(~Année)
+p1 <- plot_ly(Evo_app, x= ~Année, y = ~Apprentis, text=~w, frame= ~frame, type='bar', hoverinfo='none', 
+              textposition='outside',texttemplate = '<b>%{text}<b>', name='Apprentissage', marker=list(color="#F59F18"), textfont= list(size=8),
+               hovertemplate = paste("En","%{x},","on dénombre","%{y}<extra></extra>","contrats d'apprentissage."), constraintext='none')
+
+p1 <- p1 %>% add_trace(y = ~CPR,  text=~z, frame= ~frame, type='bar', hoverinfo='none',
+              textposition='outside',texttemplate = "<b>%{text}<b>" ,
+              name='Contrat de professionnalisation', 
+              marker=list(color="#5A040A"), textfont= list(size=8),
+              hovertemplate = paste("En","%{x},","on dénombre","%{y}<extra></extra>","contrats de profesionnalisation.")) %>% 
+  layout(showlegend=T, xaxis=list(range=c(2008,2021), title=""),margin=list(pad=10, autoexpand=FALSE), yaxis=list(range=c(0,6000),title="", tickformat=","), barmode ='group',  
+         legend=list(x=0, y=0.8))%>%
+
+  animation_slider(hide = T) %>%
+  animation_opts(frame = 400,
+                 transition = 0,
+                redraw = FALSE, mode='next')%>%
+   animation_button(x = 0.01, xanchor = "left", y = 0.9, yanchor = "bottom", label="<b>Afficher l'évolution<b>")%>%
+  config(locale = "fr")
+
+config(p1, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'pan', 'select', 'zoomIn', 'zoomOut', 'autoScale', 'lasso', 'hoverClosestCartesian', 'hoverCompareCartesian'))
+```
+
+### Nombre d’alternants selon le genre et le diplôme préparé
+```{r}
+app_dipl <- read_excel("Apprentissage diplome.xlsx")
+
+app_dipl$Diplôme <- c("Formations à l'informatique - BTS et licence", "Vision Pro (téléconseiller,\nchargé de clientèle, conseiller client…)", "Autres formations niveau Bac ou\ninférieur à l'accueil, vente et gestion", "Formations à l'informatique - Master", "Masters en management, marketing, RH…", "Autres formations : logistique, sécurité,\nmédico-social, tourisme, traduction", "TP en comptabilité, gestion, RH", "CQP Chargé d'accueil", "BTS NDRC et autres BTS\nLicence marketing et commercial", "TP Relation client à distance\net autres TP de conseillers clientèle", "BTS et Licences en management, comptabilité, RH", "TP en marketing, commercial, communication")
+
+app_dipl$Diplôme2 <- c("Formations à l'informatique - BTS et licence", "Vision Pro (téléconseiller, conseiller client…)", "Autres formations : accueil, vente et gestion", "Formations à l'informatique - Master", "Masters en management, marketing, RH…", "Autres formations : logistique, sécurité…", "TP en comptabilité, gestion, RH", "CQP Chargé d'accueil", "BTS et Licences marketing et commercial", "TP de conseillers clientèle", "BTS et Licences management, comptabilité, RH", "TP marketing, commercial, communication")
+
+app_dipl$eff <- app_dipl$Femmes + app_dipl$Hommes
+app_dipl <- app_dipl[order(app_dipl$eff),]
+
+hist_app_dipl <- plot_ly(app_dipl, y=~Diplôme2, x=~Femmes
+                         , textposition='inside', type='bar', name="Femmes", marker=list(color=col2[2]), hovertemplate=~paste(Diplôme,"\n%{x} alternantes<extra></extra>\n",round(PartF*100,0),"% des alternants du diplôme\n",round(PartEnsF*100),"% de l'ensemble des alternants")) %>%
+  add_trace(x=~Hommes, name="Hommes", marker=list(color=col2[1]), hovertemplate=~paste("%{y}\n %{x} alternants<extra></extra>\n",round(PartH*100,0),"% des alternants du diplôme\n",round(PartEnsH*100),"% de l'ensemble des alternants"))%>% 
+  layout(barmode = 'stack', xaxis=list(title="", tickformat=",",zeroline=FALSE), yaxis=list(title="", categoryorder="array", categoryarray=~Diplôme2),margin = list(
+    pad = 10), legend = list(x = 0.75, y = 0)) %>%
+  config(locale = 'fr')
+
+  
+  
+config(hist_app_dipl, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'pan', 'select', 'zoomIn', 'zoomOut', 'autoScale', 'lasso', 'hoverClosestCartesian', 'hoverCompareCartesian'))
+```
+
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+### 
+```{r}
+valueBox("18 449", "Actions de formation non-certifiantes dont 70% visent à l'acquisition des compétences essentielles au coeur de métier : techniques d’accueil et de vente, maîtrise des langues, formations à la 
+sécurité, à la logistique et formation des métiers du support administratif. ", icon="fa-graduation-cap")
+```
+
+###
+```{r}
+valueBox("14,9 M€", "Montant engagé pour les formations non-certifiantes en 2020, contribuant ainsi à accompagner l'évolution des besoins de compétences. ", icon="fa-euro-sign")
+```
+
+
+### Répartition des stagiaires des actions de formation non-certifiantes et thématiques de formation
+```{r}
+formation <- read_excel("Formation.xlsx", sheet="Feuil1")
+
+formation$`Titre formation`<- c("Efficacité professionnelle", "Management d'équipe","Bureautique","Logiciels du support administratif","Comptabilité, gestion, finance, paie","Communication et marketing digital","Droit, juridique, RH, actualités sociales","Gestion de la qualité","Sécurité, logistique, transport, manutention","Formations à l'accueil","Langues","Commerce, techniques de vente")
+
+formation$`Titre formation`<- factor(formation$`Titre formation`, levels=c("Efficacité professionnelle", "Management d'équipe","Bureautique","Logiciels du support administratif","Comptabilité, gestion, finance, paie","Communication et marketing digital","Droit, juridique, RH, actualités sociales","Gestion de la qualité","Sécurité, logistique, transport, manutention","Formations à l'accueil","Langues","Commerce, techniques de vente"))
+
+
+Hist_formation <- formation %>%
+  plot_ly(y = ~ `Titre formation`, x = ~`Nb actions de formation`, text= ~ round(`Montants engagés`/1000000,1), textposition='outside',
+          texttemplate = '<b>%{x}<b>',
+          type='bar', hovertemplate = paste("Nombre d'actions : %{x} \n", "Montants engagés : %{text} M€<extra></extra>"), 
+          marker = list(color = c(rep("#8BC0BF",2),rep("#A6A6A6",1),rep("#C3D9F4",4),rep("#75A8E5",2),rep("#10529F",3)))) %>% 
+  layout(xaxis= list(title="", range=c(0,3500), tickformat=",",zeroline=FALSE),
+         yaxis= list(title=""),margin = list(
+    pad = 10
+  )) %>%
+  config(locale = 'fr')
+
+
+config(Hist_formation, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'pan', 'select', 'zoomIn', 'zoomOut', 'autoScale', 'lasso', 'hoverClosestCartesian', 'hoverCompareCartesian'))
+```
+
