@@ -1,5 +1,5 @@
 ---
-title: "EmploiViz P2ST"
+title: "EmploiViz"
 author: ""
 output: 
   flexdashboard::flex_dashboard:
@@ -138,7 +138,7 @@ Il est tout d'abord conseillé d'adapter le niveau de zoom du navigateur, notamm
 
 ###
 ```{r picture, out.width = '100%'}
-knitr::include_graphics("GIF_P2ST.gif")
+knitr::include_graphics("GIF_apRetours.gif")
 ```
 
 Column {data-width=200}
@@ -234,7 +234,7 @@ leaflet() %>% setView(lng = 1.87528, lat = 46.60611, zoom = 5.3) %>%
 
 Column {data-width=475}
 -----------------------------------------------------------------------
-### Évolution de l'emploi dans la branche P2ST
+### Évolution de l'emploi dans la branche
 ```{r}
 emploi <- read_excel("Emploi.xlsx")
 
@@ -404,56 +404,8 @@ config(Pyr_femmes, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'pan'
 ```
 
 
-Column {data-width=500 .tabset}
+Column {data-width=500}
 -----------------------------------------------------------------------
-### Les métiers de la branche
-```{r}
-#Création de la base
-fam_met <- as.data.frame(matrix(c(rep("Technique et logistique",3),rep("Administratif et direction",5),rep("Commercial et accueil",11),"Informaticien", "Logisticien, manutentionnaire,\n magasinier, transporteur", "Ouvrier et technicien de\n l'entretien du bâtiment", "Directeur de structure", "Cadre administratif\n et financier", "Employé administratif\n d'entreprise", "Secrétaire", "Traducteur", "Optimisateur de linéaire", "Promoteur des ventes", "Vendeur, employé\n commercial", "Responsable commercial/d'équipe,\n responsable des ventes", "Chargé de développement\n commercial", "Animateur commercial", "Chargé de recouvrement", "Télévendeur, téléconseiller,\n télésecrétaire", "Enquêteur", "Directeur commercial,\n directeur des ventes", "Hôte d'accueil,\n chargé d'accueil, standardiste"), ncol=2))
-fam_met <- rename(fam_met, famille=V1)
-fam_met <- rename(fam_met, metier=V2)
-
-
-# Création du faux proportionnel pour faire apparaitre un métier à petit effectif
-fam_met$eff_met1 <- c(2586, 1360, 1419, 1106, 11654, 8451,1340, 79, 9412, 4897, 14836, 7750, 1824, 2598, 3592, 53634, 1000, 3246, 4083) 
-fam_met$eff_met2 <- fam_met$eff_met1 + c(rep(0,7), 200, rep(0,11)) ## 279 à la place de 79 pour faire apparaitre le métier de manière plus lisible sur le graphique
-fam_met$eff_fam1 <- c(rep(5365,3),rep(22630,5),rep(106872,11))
-fam_met$eff_fam2 <- fam_met$eff_fam1 + c(rep(0,3),rep(200,5),rep(0,11)) ## 22830 au lieu de 22630 pour faux proprotionnel
-
-# Création des pourcentages
-fam_met$pct_eff_met <- round(fam_met$eff_met1/(sum(fam_met$eff_met1))*100, digits=0)
-fam_met$pct_fam_met <- round(fam_met$eff_fam1/(sum(fam_met$eff_met1))*100, digits=0)
-
-# Création de libemploi plus court pour améliorer la visibilité du graphique
-fam_met$metierS <- c("<b>Informaticien</b>", "Logisticien", "Ouvrier d'entretien", "Directeur de structure", "Cadre admin. et financier", "Employé administratif", "Secrétaire", "Traducteur", "Optimisateur de linéaire", "Promoteur des ventes", "Employé commercial", "Responsable commercial", "Chargé de dév. commercial", "Animateur commercial", "Chargé de recouvrement", "Télévendeur", "Enquêteur", "Directeur commercial", "Hôte d'accueil")
-
-# Modification format pour séparateur des milliers
-fam_met$eff_fam1 <- format(fam_met$eff_fam1, big.mark = " ")
-fam_met$eff_met1 <- format(fam_met$eff_met1, big.mark = " ")
-
-
-# Text à apparaitre en hovertext
-text <- paste(c(unique((fam_met$famille)), fam_met$metier), "\n" ,c(unique(fam_met$eff_fam1),fam_met$eff_met1), "salariés \n" , c(unique(fam_met$pct_fam_met),fam_met$pct_eff_met), '% des effectifs de la branche') ## enlever les 1
-
-
-# Graphique  
-dia_fam_metier3 <- plot_ly(
-  labels = c(unique((fam_met$famille)), fam_met$metierS),
-  parents = c(rep("",length(unique((fam_met$famille)))),fam_met$famille),
-  values = c(unique(fam_met$eff_fam2),fam_met$eff_met2), ##enlever les 2
-  type = 'sunburst', 
-  insidetextorientation='radial', #orientation des labels : auto radial tangential horizontal,
-  branchvalues = 'total',
-  hoverinfo='text',
-  marker = list(colors=c(col_sup,col_adm,col_com)),
-  hovertext = text,
-  rotation =260
-)
-
-
-config(dia_fam_metier3, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'pan', 'select', 'zoomIn', 'zoomOut', 'autoScale', 'lasso'))
-```
-
 ### Les types de contrat de travail
 ```{r}
 contrat2 <- read_excel("Contrat.xlsx")
@@ -541,50 +493,6 @@ config(fig2, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'pan', 'sel
 ```
 
 
-### La féminisation par métier
-```{r}
-femi <- read_excel("Féminisation.xlsx", sheet="Métier")
-
-#Création de libellés plus courts pour meilleur affichage
-femi$metierS <- c("Informaticien", "Logisticien", "Ouvrier d'entretien", "Directeur de structure", "Cadre admin. et financier", "Employé administratif", "Secrétaire", "Traducteur", "Optimisateur de linéaire", "Promoteur des ventes", "Employé commercial", "Responsable commercial", "Chargé de dév. commercial", "Animateur commercial", "Chargé de recouvrement", "Télévendeur", "Enquêteur", "Directeur commercial", "Hôte d'accueil","Total")
-
-# Ordonne selon le taux de féminisation
-femi <- femi[order(femi$`Taux de féminisation`),] 
-
-#Graphique
-Hist_femi_tot <- femi[femi$Famille=="Total",] %>%
-  plot_ly(y = ~ metierS, x = ~ `Taux de féminisation`, type='bar',
-          marker = list(color = "black"), hoverinfo="x", xhoverformat = ".0%") %>% 
-  layout(xaxis= list(title="", range = list(0,0.95), zeroline=FALSE),
-         yaxis= list(title=" ", categoryorder="array", categoryarray=~metierS),
-         title="Taux de féminisation", y=0.9, margin=list(pad=10))
-
-Hist_femi_sup <- femi[femi$Famille=="Technique et logistique",] %>%
-  plot_ly(y = ~ metierS, x = ~ `Taux de féminisation`, type='bar', 
-          marker = list(color = col_sup), hoverinfo="x", xhoverformat = ".0%") %>% 
-  layout(xaxis= list(title="", range = list(0,0.95), zeroline=FALSE),
-         yaxis= list(title=" ", categoryorder="array", categoryarray=~metierS)
-         , margin=list(pad=10))
-
-Hist_femi_adm <- femi[femi$Famille=="Administratif et direction",] %>%
-  plot_ly(y = ~ metierS, x = ~ `Taux de féminisation`, type='bar', 
-          marker = list(color = col_adm), hoverinfo="x", xhoverformat = ".0%" ) %>% 
-  layout(xaxis= list(title="", range = list(0,0.95), zeroline=FALSE),
-         yaxis= list(title=" ", categoryorder="array", categoryarray=~metierS)
-         , margin=list(pad=10)) # Ordonne les lignes selon l'odre de la colonne métier
-
-Hist_femi_com <- femi[femi$Famille=="Commercial et accueil",] %>%
-  plot_ly(y = ~ metierS, x = ~ `Taux de féminisation`, type='bar',
-          marker = list(color = col_com), hoverinfo="x", xhoverformat = ".0%" ) %>% 
-  layout(xaxis= list(title="", range = list(0,0.95), tickformat='.0%', zeroline=FALSE),
-         yaxis= list(title=" ", categoryorder="array", categoryarray=~metierS)
-         , margin=list(pad=10))
-
-hist_fem_met <- subplot(Hist_femi_tot, Hist_femi_adm,Hist_femi_com,Hist_femi_sup, shareX=TRUE, nrows=4, heights=c(1.3/20.3,5/20.3,11/20.3,3/20.3)) %>%
-  hide_legend()
-
-config(hist_fem_met, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'pan', 'select', 'zoomIn', 'zoomOut', 'autoScale', 'lasso', 'hoverClosestCartesian', 'hoverCompareCartesian'))
-```
 
 
 
@@ -593,14 +501,29 @@ Alternance et formation professionnelle {data-columns=rows}
 
 Column {data-width=500}
 -----------------------------------------------------------------------
-### Évolution du nombre d’alternants dans la branche P2ST
+### 
+```{r}
+valueBox("18 449", "Actions de formation non-certifiantes dont 70% visent à l'acquisition des compétences essentielles au coeur de métier : techniques d’accueil et de vente, maîtrise des langues, formations à la 
+sécurité, à la logistique et formation des métiers du support administratif. ", icon="fa-graduation-cap")
+```
+
+###
+```{r}
+valueBox("14,9 M€", "Montant engagé pour les formations non-certifiantes en 2020, contribuant ainsi à accompagner l'évolution des besoins de compétences. ", icon="fa-euro-sign")
+```
+
+### Évolution du nombre d’alternants dans la branche
   
 ```{r}
 app <- read_excel("Apprentissage.xlsx")
+appfrom2016 <- app[10:14,]
+
 
 #Création des étiquettes
-app$z <- c("","","","","","","","","","1 723","1 908","2 598","3 744","2 134")
-app$w <- c("","430","400","600","610","680","610","620","820","950","1 120","1 250","1 400","5 352")
+#app$z <- c("","","","","","","","","","1 723","1 908","2 598","3 744","2 134")
+#app$w <- c("","430","400","600","610","680","610","620","820","950","1 120","1 250","1 400","5 352")
+appfrom2016$z <- c("1 723","1 908","2 598","3 744","2 134")
+appfrom2016$w <- c("950","1 120","1 250","1 400","5 352")
 
 
 accumulate_by <- function(dat, var) {
@@ -612,7 +535,7 @@ accumulate_by <- function(dat, var) {
   dplyr::bind_rows(dats)
 }
 
-Evo_app <- app %>% accumulate_by(~Année)
+Evo_app <- appfrom2016 %>% accumulate_by(~Année)
 p1 <- plot_ly(Evo_app, x= ~Année, y = ~Apprentis, text=~w, frame= ~frame, type='bar', hoverinfo='none', 
               textposition='outside',texttemplate = '<b>%{text}<b>', name='Apprentissage', marker=list(color="#F59F18"), textfont= list(size=8),
                hovertemplate = paste("En","%{x},","on dénombre","%{y}<extra></extra>","contrats d'apprentissage."), constraintext='none')
@@ -622,7 +545,7 @@ p1 <- p1 %>% add_trace(y = ~CPR,  text=~z, frame= ~frame, type='bar', hoverinfo=
               name='Contrat de professionnalisation', 
               marker=list(color="#5A040A"), textfont= list(size=8),
               hovertemplate = paste("En","%{x},","on dénombre","%{y}<extra></extra>","contrats de profesionnalisation.")) %>% 
-  layout(showlegend=T, xaxis=list(range=c(2008,2021), title=""),margin=list(pad=10, autoexpand=FALSE), yaxis=list(range=c(0,6000),title="", tickformat=","), barmode ='group',  
+  layout(showlegend=T, xaxis=list(range=c(2015.5,2021),title=""),margin=list(pad=10, autoexpand=FALSE), yaxis=list(range=c(0,6000),title="", tickformat=","), barmode ='group',  
          legend=list(x=0, y=0.8))%>%
 
   animation_slider(hide = T) %>%
@@ -635,6 +558,9 @@ p1 <- p1 %>% add_trace(y = ~CPR,  text=~z, frame= ~frame, type='bar', hoverinfo=
 config(p1, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'pan', 'select', 'zoomIn', 'zoomOut', 'autoScale', 'lasso', 'hoverClosestCartesian', 'hoverCompareCartesian'))
 ```
 
+
+Column {data-width=500}
+-----------------------------------------------------------------------
 ### Nombre d’alternants selon le genre et le diplôme préparé
 ```{r}
 app_dipl <- read_excel("Apprentissage diplome.xlsx")
@@ -659,41 +585,5 @@ config(hist_app_dipl, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'p
 ```
 
 
-Column {data-width=500}
------------------------------------------------------------------------
-### 
-```{r}
-valueBox("18 449", "Actions de formation non-certifiantes dont 70% visent à l'acquisition des compétences essentielles au coeur de métier : techniques d’accueil et de vente, maîtrise des langues, formations à la 
-sécurité, à la logistique et formation des métiers du support administratif. ", icon="fa-graduation-cap")
-```
 
-###
-```{r}
-valueBox("14,9 M€", "Montant engagé pour les formations non-certifiantes en 2020, contribuant ainsi à accompagner l'évolution des besoins de compétences. ", icon="fa-euro-sign")
-```
-
-
-### Répartition des stagiaires des actions de formation non-certifiantes et thématiques de formation
-```{r}
-formation <- read_excel("Formation.xlsx", sheet="Feuil1")
-
-formation$`Titre formation`<- c("Efficacité professionnelle", "Management d'équipe","Bureautique","Logiciels du support administratif","Comptabilité, gestion, finance, paie","Communication et marketing digital","Droit, juridique, RH, actualités sociales","Gestion de la qualité","Sécurité, logistique, transport, manutention","Formations à l'accueil","Langues","Commerce, techniques de vente")
-
-formation$`Titre formation`<- factor(formation$`Titre formation`, levels=c("Efficacité professionnelle", "Management d'équipe","Bureautique","Logiciels du support administratif","Comptabilité, gestion, finance, paie","Communication et marketing digital","Droit, juridique, RH, actualités sociales","Gestion de la qualité","Sécurité, logistique, transport, manutention","Formations à l'accueil","Langues","Commerce, techniques de vente"))
-
-
-Hist_formation <- formation %>%
-  plot_ly(y = ~ `Titre formation`, x = ~`Nb actions de formation`, text= ~ round(`Montants engagés`/1000000,1), textposition='outside',
-          texttemplate = '<b>%{x}<b>',
-          type='bar', hovertemplate = paste("Nombre d'actions : %{x} \n", "Montants engagés : %{text} M€<extra></extra>"), 
-          marker = list(color = c(rep("#8BC0BF",2),rep("#A6A6A6",1),rep("#C3D9F4",4),rep("#75A8E5",2),rep("#10529F",3)))) %>% 
-  layout(xaxis= list(title="", range=c(0,3500), tickformat=",",zeroline=FALSE),
-         yaxis= list(title=""),margin = list(
-    pad = 10
-  )) %>%
-  config(locale = 'fr')
-
-
-config(Hist_formation, displaylogo = FALSE, modeBarButtonsToRemove = c('zoom', 'pan', 'select', 'zoomIn', 'zoomOut', 'autoScale', 'lasso', 'hoverClosestCartesian', 'hoverCompareCartesian'))
-```
 
